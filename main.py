@@ -5,6 +5,7 @@ Run with:  python main.py
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from pyrogram import idle
@@ -58,8 +59,16 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    # Use Pyrogram's own runner instead of asyncio.run(). The Client is created
-    # at import time and binds to the event loop that exists then; app.run()
-    # executes the coroutine on that same loop, avoiding the
-    # "attached to a different loop" RuntimeError on Python 3.12.
-    app.run(main())
+    # The Pyrogram Client is created at import time and binds to the event loop
+    # that exists then (Client.__init__ calls asyncio.get_event_loop()). We must
+    # run main() on that SAME loop, otherwise session objects raise
+    # "attached to a different loop" on Python 3.12.
+    #
+    # asyncio.run() would create a *new* loop (the bug we hit), and this
+    # Kurigram build's app.run() takes no coroutine argument — so we drive the
+    # client's own loop directly.
+    loop = getattr(app, "loop", None) or asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        log.info("Interrupted by user.")
