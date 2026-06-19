@@ -5,7 +5,6 @@ Run with:  python main.py
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from pyrogram import idle
@@ -59,7 +58,8 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        log.info("Interrupted by user.")
+    # Use Pyrogram's own runner instead of asyncio.run(). The Client is created
+    # at import time and binds to the event loop that exists then; app.run()
+    # executes the coroutine on that same loop, avoiding the
+    # "attached to a different loop" RuntimeError on Python 3.12.
+    app.run(main())

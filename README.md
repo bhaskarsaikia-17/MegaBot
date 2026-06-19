@@ -100,7 +100,8 @@ automatically on crash and on boot. Run it from the project directory:
 ```bash
 chmod +x bot.sh            # once, after cloning
 
-./bot.sh install           # create + enable + start the service
+./bot.sh setup             # create .venv + install Python dependencies
+sudo bash bot.sh install   # create + enable + start the service
 ./bot.sh status            # show current status
 ./bot.sh logs              # follow live logs (Ctrl+C to exit)
 ./bot.sh restart           # restart the bot
@@ -111,6 +112,13 @@ chmod +x bot.sh            # once, after cloning
 ./bot.sh update            # git pull + pip install + restart
 ./bot.sh uninstall         # remove the service entirely
 ```
+
+First-time order: `setup` (installs deps into `.venv`), make sure `.env` exists
+and MegaCMD is installed, then `install`. The `install` step auto-detects
+`.venv/bin/python`, so the service runs with your dependencies. If you ever see
+`ModuleNotFoundError: No module named 'pyrogram'` in the logs, it means deps
+aren't installed for the Python the service uses — run `./bot.sh setup` then
+`sudo bash bot.sh install`.
 
 Notes:
 
