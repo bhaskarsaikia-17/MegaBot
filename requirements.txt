@@ -1,0 +1,9 @@
+# Telegram MTProto framework (maintained Pyrogram fork).
+# Same `from pyrogram import ...` API, supports up to 2 GB uploads (4 GB premium).
+Kurigram==2.2.13
+
+# C extension that speeds up Pyrogram/Kurigram crypto. Optional but recommended.
+TgCrypto==1.2.5
+
+# Loads configuration from a .env file.
+python-dotenv==1.0.1

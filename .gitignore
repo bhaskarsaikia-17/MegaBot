@@ -1,0 +1,18 @@
+# Secrets / config
+.env
+.env.example
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Pyrogram session files
+*.session
+*.session-journal
+
+# Bot working data
+downloads/
+*.log
