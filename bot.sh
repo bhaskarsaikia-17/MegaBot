@@ -59,13 +59,55 @@ require_installed() {
     fi
 }
 
+# Run a command as the target (non-root) service user. When the script is
+# invoked through sudo, drop back to $SUDO_USER so files (the venv, caches)
+# are owned by that user and not root. Otherwise run as-is.
+run_as_user() {
+    if [[ "$(id -u)" -eq 0 && -n "${SUDO_USER:-}" ]]; then
+        sudo -u "${SUDO_USER}" "$@"
+    else
+        "$@"
+    fi
+}
+
 # --- commands ----------------------------------------------------------------
+
+cmd_setup() {
+    local venv="${SCRIPT_DIR}/.venv"
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "ERROR: python3 is not installed. Install it first, e.g.:" >&2
+        echo "  sudo apt update && sudo apt install -y python3 python3-venv python3-pip" >&2
+        exit 1
+    fi
+    if [[ ! -d "${venv}" ]]; then
+        echo "Creating virtualenv at ${venv} ..."
+        run_as_user python3 -m venv "${venv}"
+    fi
+    echo "Installing dependencies into ${venv} ..."
+    run_as_user "${venv}/bin/python" -m pip install --upgrade pip
+    run_as_user "${venv}/bin/python" -m pip install -r "${SCRIPT_DIR}/requirements.txt"
+    echo
+    echo "Setup complete. Next:"
+    echo "  1. Ensure .env exists (cp .env.example .env && edit it)."
+    echo "  2. Install MegaCMD if you haven't: https://mega.nz/cmd"
+    echo "  3. Run: sudo bash bot.sh install   (or 'restart' if already installed)"
+}
 
 cmd_install() {
     echo "Installing systemd service '${SERVICE_NAME}'..."
     echo "  Project dir : ${SCRIPT_DIR}"
     echo "  Run as user : ${RUN_USER}"
     echo "  Python      : ${PYTHON_BIN}"
+
+    if [[ "${PYTHON_BIN}" != *"/.venv/"* ]]; then
+        echo "WARNING: using system Python (${PYTHON_BIN}); no .venv detected."
+        echo "         If dependencies aren't installed the bot will crash-loop."
+        echo "         Recommended: run './bot.sh setup' first."
+    fi
+    if ! "${PYTHON_BIN}" -c "import pyrogram" >/dev/null 2>&1; then
+        echo "WARNING: '${PYTHON_BIN}' cannot import pyrogram (Kurigram)."
+        echo "         Run './bot.sh setup' to create a venv and install deps."
+    fi
 
     if [[ ! -f "${SCRIPT_DIR}/.env" ]]; then
         echo "WARNING: ${SCRIPT_DIR}/.env not found. Create it before starting"
@@ -159,7 +201,7 @@ cmd_update() {
     else
         echo "  (not a git checkout; skipping git pull)"
     fi
-    "${PYTHON_BIN}" -m pip install -r "${SCRIPT_DIR}/requirements.txt"
+    run_as_user "${PYTHON_BIN}" -m pip install -r "${SCRIPT_DIR}/requirements.txt"
     if [[ -f "${SERVICE_FILE}" ]]; then
         cmd_restart
     else
@@ -168,12 +210,28 @@ cmd_update() {
 }
 
 usage() {
-    sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    cat <<'EOF'
+bot.sh — manage MegaBot as a systemd service for 24/7 operation.
+
+Usage:
+  ./bot.sh setup       Create .venv and install Python dependencies
+  ./bot.sh install     Create + enable + start the systemd service
+  ./bot.sh uninstall   Stop, disable and remove the service
+  ./bot.sh start       Start the service
+  ./bot.sh stop        Stop the service
+  ./bot.sh restart     Restart the service
+  ./bot.sh status      Show service status
+  ./bot.sh logs        Follow live logs (Ctrl+C to exit)
+  ./bot.sh enable      Start automatically on boot
+  ./bot.sh disable     Do not start on boot
+  ./bot.sh update      git pull, reinstall deps, restart
+EOF
 }
 
 # --- dispatch ----------------------------------------------------------------
 
 case "${1:-}" in
+    setup)     cmd_setup ;;
     install)   cmd_install ;;
     uninstall) cmd_uninstall ;;
     start)     cmd_start ;;

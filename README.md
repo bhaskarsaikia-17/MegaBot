@@ -92,6 +92,40 @@ You can log into Mega in two ways:
 
 ---
 
+## Run 24/7 (Linux, systemd)
+
+On a Linux host, `bot.sh` installs MegaBot as a systemd service that restarts
+automatically on crash and on boot. Run it from the project directory:
+
+```bash
+chmod +x bot.sh            # once, after cloning
+
+./bot.sh install           # create + enable + start the service
+./bot.sh status            # show current status
+./bot.sh logs              # follow live logs (Ctrl+C to exit)
+./bot.sh restart           # restart the bot
+./bot.sh stop              # stop it
+./bot.sh start             # start it again
+./bot.sh enable            # start on boot
+./bot.sh disable           # don't start on boot
+./bot.sh update            # git pull + pip install + restart
+./bot.sh uninstall         # remove the service entirely
+```
+
+Notes:
+
+- The systemd commands need root, so `bot.sh` uses `sudo` automatically when you
+  are not root.
+- The service runs as your (non-root) user — when invoked via `sudo` it uses
+  `$SUDO_USER` — so it shares that user's MegaCMD session and cache.
+- It auto-detects a project virtualenv at `.venv/bin/python`, otherwise falls
+  back to the system `python3`.
+- `Restart=always` with a 5s delay keeps the bot up; `KillSignal=SIGINT` and a
+  30s stop timeout let in-flight transfers wind down gracefully on restart.
+- Make sure `.env` exists before `./bot.sh install`.
+
+---
+
 ## Security notes
 
 - **Access control is essential.** This bot can read and modify a Mega account.
@@ -136,6 +170,7 @@ lists it, then deletes the temporary folder. You must be logged in for `/info`.
 MegaBot/
 ├── main.py                  # entrypoint: starts client, auto-login, idle loop
 ├── config.py                # env loading & validation (fails fast)
+├── bot.sh                   # systemd service manager (install/start/restart/...)
 ├── requirements.txt
 ├── .env.example
 └── megabot/
